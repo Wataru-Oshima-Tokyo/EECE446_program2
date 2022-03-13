@@ -1,4 +1,4 @@
-EXE = p2p
+EXE = p2p _p2p_sample
 CFLAGS = -Wall
 CXXFLAGS = -Wall
 LDLIBS =
@@ -12,6 +12,8 @@ all: $(EXE)
 #
 p2p: main.c
 	$(CC) $(CFLAGS) main.c $(LDLIBS) -o p2p
+_p2p_sample: sub.c
+	$(CC) $(CFLAGS) sub.c $(LDLIBS) -o _p2p_sample
 #
 # OR
 #

@@ -1,3 +1,15 @@
+
+// This assignment is done by using the code from lab 2.
+//Authors
+//Oshima, Wataru
+//Chu, Chen
+//
+//EECE446
+//Spring 2022
+
+/* This code is an updated version of the sample code from "Computer Networks: A Systems
+ * Approach," 5th Edition by Larry L. Peterson and Bruce S. Davis. Some code comes from
+ * man pages, mostly getaddrinfo(3). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -10,108 +22,58 @@
 
 // #define HOST "www.csuchico.edu"
 #define HOST "ecc-linux.csuchico.edu"
-#define _PORT "80"
-#define BYTESIZE 1000
+#define PORT "80"
+#define BYTESIZE 512
 #define rep(i,a,b) for(int i=a; i<b;i++)
+/*
+ * Lookup a host IP address and connect to it using service. Arguments match the first two
+ * arguments to getaddrinfo(3).
+ *
+ * Returns a connected socket descriptor or -1 on error. Caller is responsible for closing
+ * the returned socket.
+ */
 int lookup_and_connect( const char *host, const char *service );
-void join(int socketFd, int peer_id);
-void publish(int socketFd, int count, char *files[]);
+char convertToHex(char* input, char* output);
 
 
 
-void join(int socketFd, int peer_id)
-{
-    unsigned char join_request[5];
-    char join_response[5];
-    int bytes_recieved = 0;
-    int bytes_sent = 0;
-    // Action = 0 in hexodecimal 
-    join_request[0] = 0x00;
-    // Peer ID must be in network byte order, this should be 4 bytes total
-    join_request[1] = (peer_id >> 24) & 0xFF;
-    join_request[2] = (peer_id >> 16) & 0xFF;
-    join_request[3] = (peer_id >> 8) & 0xFF;
-    join_request[4] = peer_id & 0xFF;
-    
-    rep(i, 0, 5) printf("%d\n", join_request[i]);
-    // send join request
-    bytes_sent = send(socketFd, join_request, 5, 0);
-    if (bytes_sent == -1)
-    {
-        perror("[<Error> Client] onSend:\n");
-        exit(1);
-    }else{
-        printf("successfully joined!!\n");
-    }
-}
+int main(int argc, char *argv[]) {
+	int s;
+	/* Lookup IP and connect to server */
+	if ( ( s = lookup_and_connect(HOST, PORT) ) < 0 ) {
+		exit( 1 );
+	}else{
+		printf("successfully connected\n");
+	}
+	// printf("connection ok\n");
 
-void publish(int socketFd, int count, char *files[]){
-    char publsish_request[1200];
-    int bytes_sent = 0;
-    rep(i,0,count){
-        printf("%s\n", files[i]);
-        // bytes_sent = send(socketFd, publsish_request, 1200, 0);
-        bytes_sent = send(socketFd, files[i], 1200, 0);
-        if (bytes_sent == -1)
-        {
-            perror("[<Error> Client] onSend:\n");
-            exit(1);
-        }else{
-            printf("%s is published!!\n", files[i]);
-        }
-    }     
+	/* Modify the program so it
+	 *
+	 * 1) connects to www.ecst.csuchico.edu on port 80 (mostly done above)
+	 * 2) sends "GET /~kkredo/file.html HTTP/1.0\r\n\r\n" to the server
+	 * 3) receives all the data sent by the server (HINT: "orderly shutdown" in recv(2))
+	 * 4) prints the total number of bytes received
+	 *
+	 * */
 
-}
+	// char *msg = "GET /~kkredo/file.html HTTP/1.0\r\n\r\n";
+	// if(argc==2){
+	// 	sscanf(argv[1], "%ld", &bytes_per_chunk); //https://stackoverflow.com/questions/9748393/how-can-i-get-argv-as-int/42860313
+	// 	if (bytes_per_chunk>521 || bytes_per_chunk <10){
+	// 		printf("please put a number more than 10 and less than 521\n");
+	// 		exit(1);
+	// 	}
+	// 	// bytes_per_chunk = (int)argv[1];
 
+	// }
+    // int len = strlen(msg);	 
+	// if(send(s, msg, len, 0) < 0)
+	// 	printf("error on send");
+	// int total_recv = recv_timeout(s,3);
+	// printf("Number of <h1> tags: %d\n", num);
+	// printf( "Number of bytes: %d\n", total_recv);
 
-
-
-
-
-
-int main(int argc, char *argv[])
-{
-    // Address
-    int s;
-    // print out the argum
-    // const char *HOST_ADDR = argv[1];
-    const char *HOST_ADDR = HOST;
-    // const char *PORT = argv[2];
-    const char *PORT = _PORT;
-    // define HOST_ADDR and PORT as arguments
-    int CHUNK_SIZE = BYTESIZE;
-    char *request = "GET /~kkredo/file.html HTTP/1.0\r\n\r\n";
-    // A peer must have a unique identifier, coming in from the arguments
-    // int peer_id = atoi(argv[3]);
-    int peer_id = atoi(argv[1]);
-    // passing args correct #
-    // if (argc != 4)
-    if (argc != 2)
-    {
-        printf("3 Args plz\n");
-        exit(1);
-    }
-    // else if (argc == 4)
-    else if (argc == 2)
-    {
-        // Read in the argument
-        CHUNK_SIZE = 1000;
-    }
-    char response[CHUNK_SIZE];
-    if (CHUNK_SIZE <= 0 || CHUNK_SIZE > 1000)
-    {
-        printf("Error: Please enter CHUNK_SIZE > 0 and <= 1000\n");
-        exit(1);
-    }
-    if ((s = lookup_and_connect(HOST_ADDR, PORT)) < 0)
-    {
-        fprintf(stderr, "Error connecting %s\n", gai_strerror(s));
-        exit(1);
-    }else{
-        printf("successfully connected to the host!\n");
-    }
-    
-    	int file_count = 0;
+	int file_count = 0;
 	DIR * dirp;
 	struct dirent * entry;
 
@@ -142,10 +104,16 @@ int main(int argc, char *argv[])
     scanf("%s",input);
     while(strcmp(input,"EXIT")){
         if(strcmp(input,"JOIN")==0){
-            join(s, peer_id);
+            printf("send a JOIN request to the registry\n");
         }else if (strcmp(input,"PUBLISH")==0){
-
-            publish(s, file_count, fileNames);
+			action 	= 0x01;
+			rep(i,0, file_count){
+				int len = strlen(fileNames[i]);
+    			char hex_str[(len*2)+1];
+				convertToHex(fileNames[i], hex_str);
+				printf("ascii_str: %s\n", fileNames[i]);
+    			printf("hex_str: %s\n", hex_str);
+			} 
             printf("send a PUBLISH request to the registry.\n");
         }else if (strcmp(input,"SEARCH")==0){
             printf(" (a) read a file name from the terminal,\n (b) send a SEARCH request to the registry,\n (c) and print the peer info from the SEARCH response or a message if the file was not found.\n");
@@ -161,16 +129,8 @@ int main(int argc, char *argv[])
 
 	close(s);
 
-
-
-
-
-    return 0;
+	return 0;
 }
-
-
-
-
 
 int lookup_and_connect( const char *host, const char *service ) {
 	struct addrinfo hints;
@@ -210,8 +170,20 @@ int lookup_and_connect( const char *host, const char *service ) {
 	return s;
 }
 
-
-
-
-
-
+char convertToHex(char* input, char* output){
+    int loop;
+    int i; 
+    
+    i=0;
+    loop=0;
+    
+    while(input[loop] != '\0')
+    {
+        sprintf((char*)(output+i),"%02X", input[loop]);
+        loop+=1;
+        i+=2;
+    }
+    //insert NULL at the end of the output string
+    output[i++] = '\0';
+	return 'a';
+}
