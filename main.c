@@ -7,25 +7,26 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <dirent.h>
-
+#include <math.h>
+#include <stdlib.h>
 // #define HOST "www.csuchico.edu"
 // #define HOST "ecc-linux.csuchico.edu"
 #define HOST "localhost"
-#define _PORT "2010"
+#define _PORT "2020"
 #define BYTESIZE 1000
 #define rep(i,a,b) for(int i=a; i<b;i++)
 int lookup_and_connect( const char *host, const char *service );
 void join(int socketFd, int peer_id);
 void search(int socketFd, char *filename);
 void publish(int socketFd, int count, char *files[]);
-void convertToHex(char* input, char* output);
-// int convertToHex(char* input);
+
+
+
 
 void join(int socketFd, int peer_id)
 {
     char join_request[5];
-    char join_response[5];
-    int bytes_recieved = 0;
+
     int bytes_sent = 0;
     // Action = 0 in hexodecimal 
     join_request[0] = 0x00;
@@ -43,7 +44,7 @@ void join(int socketFd, int peer_id)
         perror("[<Error> Client] onSend:\n");
         exit(1);
     }else{
-        printf("successfully joined!!\n");
+        // printf("successfully joined!!\n");
     }
 }
 
@@ -68,38 +69,94 @@ void publish(int socketFd, int count, char *files[]){
         publsish_request[start] =0x00;
         start++;
         lenOfarray++;
-        // char hex_str[(len*2)+1];
-        // printf("%s\n", files[i]);
-        // convertToHex(files[i], hex_str);
-		// int char_count = sizeof(files[i]);
-        // printf("hex_str: %s\n", hex_str);
-		// printf("%d\n", char_count);
-        // bytes_sent = send(socketFd, publsish_request, 1200, 0);
-
     } 
     // int temp = sizeof(publsish_request);    
-    printf("%d\n", lenOfarray);
+    // printf("%d\n", lenOfarray);
     bytes_sent = send(socketFd, publsish_request, lenOfarray, 0);
     if (bytes_sent == -1)
     {
         perror("[<Error> Client] onSend:\n");
         exit(1);
     }else{
-        printf("successfully published");
+        // printf("successfully published");
     }
-    //         
-    // if (bytes_sent == -1)
-    // {
-    //     perror("[<Error> Client] onSend:\n");
-    //     exit(1);
-    // }else{
-    //     printf("%02X is published!!\n", publsish_request);
-    // }
+
 
 }
 
 void search(int socketFd, char *filename){
+    char search_request[1200];
+    char buf[10];
+    // char s[1200];
+    search_request[0] = 0x02;
+    int len = strlen(filename);
+    rep(i,1,len+1){
+        search_request[i] = filename[i-1];
+    } 
+    search_request[len+1] = 0x00;
+    int bytes_sent = send(socketFd, search_request, len+2, 0);
+    if (bytes_sent == -1)
+    {
+        perror("[<Error> Client] onSend:\n");
+        exit(1);
+    }else{
+        // printf("%02X\n", bytes_sent);
+        // printf("successfully searched\n");
+    }
+    int _len =0;
+    _len = recv(socketFd, buf, 10, 0 );
+    if(_len <0){exit(1);}
+    // unsigned int result =0x00;
+    char peer[100];
+    char port[100];
+    long peer_n =0;
+    long port_n=0;
+    // result[0] ='x';
+    for (int i = 0; i < 10; i++)
+    {
+        char str[6];
+        unsigned int temp = buf[i] & 0xFF;         
+        if(i<4){
+            // printf("%d", temp); 
+            snprintf(str, sizeof(str), "%02x", temp);
+            strcat(peer, str);
+            
+        }   
+        else if (i==4){
+             peer_n = strtol(peer, NULL, 16);
+             if(peer_n !=0){
+                 printf("File found at\n Peer %ld\n", peer_n);
+                 peer_n =0;
+             }else {
+                 printf("File not indexed by registry\n");
+                //  free(peer);
+                //  free(port);
+                 break;
+             }
+            //  printf("%ld", n);
+             printf(" %d:", temp); 
+        }
+        else if (i<8){
+            
+            if(i==7) printf("%d:", temp);
+            else printf("%d.", temp); 
+        }
+        else{
+            snprintf(str, sizeof(str), "%02x", temp);
+            strcat(port, str);
+            if(i==9){
+                port_n = strtol(port, NULL, 16);
+                printf("%ld\n", port_n);
 
+                // free(peer);
+                // free(port);
+                break;
+            }
+        }
+
+    }  
+    memset(port, 0, 100);
+    memset(peer, 0, 100);     
 }
 
 
@@ -111,32 +168,20 @@ int main(int argc, char *argv[])
 {
     // Address
     int s;
-    // print out the argum
-    // const char *HOST_ADDR = argv[1];
     const char *HOST_ADDR = HOST;
-    // const char *PORT = argv[2];
     const char *PORT = _PORT;
-	printf("%s\n", PORT);
-    // define HOST_ADDR and PORT as arguments
+    int peer_id = 0;
     int CHUNK_SIZE = BYTESIZE;
-    char *request = "GET /~kkredo/file.html HTTP/1.0\r\n\r\n";
-    // A peer must have a unique identifier, coming in from the arguments
-    // int peer_id = atoi(argv[3]);
-    int peer_id = atoi(argv[1]);
-    // passing args correct #
-    // if (argc != 4)
-    if (argc != 2)
-    {
-        printf("3 Args plz\n");
+    if (argc ==4){
+        HOST_ADDR = argv[1];
+        PORT = argv[2];
+        peer_id =atoi(argv[3]);
+        CHUNK_SIZE = 1000;
+    }else {
+        printf("please put server name, port nummber and peer id\n");
         exit(1);
     }
-    // else if (argc == 4)
-    else if (argc == 2)
-    {
-        // Read in the argument
-        CHUNK_SIZE = 1000;
-    }
-    char response[CHUNK_SIZE];
+    //setting the chunksize
     if (CHUNK_SIZE <= 0 || CHUNK_SIZE > 1000)
     {
         printf("Error: Please enter CHUNK_SIZE > 0 and <= 1000\n");
@@ -147,10 +192,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Error connecting %s\n", gai_strerror(s));
         exit(0);
     }else{
-        printf("successfully connected to the host!\n");
+        // printf("successfully connected to the host!\n");
     }
     
-    	int file_count = 0;
+    //countig the number of files inside sharedFiels directory
+    int file_count = 0;
 	DIR * dirp;
 	struct dirent * entry;
 
@@ -161,6 +207,8 @@ int main(int argc, char *argv[])
 			file_count++;
 		}
 	}
+
+    //checking the name of files inside sharedFiels directory
 	char *fileNames[file_count];
 	closedir(dirp);
 	int count = 0;
@@ -175,35 +223,33 @@ int main(int argc, char *argv[])
 
 
 
-    printf("Please input a value: ");
+    printf("Enter a command: ");
     char input[100];
-	int action= 0x00;
+	// int action= 0x00;
     scanf("%s",input);
     while(strcmp(input,"EXIT")){
         if(strcmp(input,"JOIN")==0){
             join(s, peer_id);
         }else if (strcmp(input,"PUBLISH")==0){
-
             publish(s, file_count, fileNames);
-            printf("send a PUBLISH request to the registry.\n");
+            // printf("send a PUBLISH request to the registry.\n");
         }else if (strcmp(input,"SEARCH")==0){
-            printf(" (a) read a file name from the terminal,\n (b) send a SEARCH request to the registry,\n (c) and print the peer info from the SEARCH response or a message if the file was not found.\n");
+            printf("Enter a file name: ");
+            char _search[100];
+            scanf("%s",_search);
+            search(s, _search);
+            // printf(" (a) read a file name from the terminal,\n (b) send a SEARCH request to the registry,\n (c) and print the peer info from the SEARCH response or a message if the file was not found.\n");
         }else if (strcmp(input,"EXIT")==0){
             printf("close the peer application");
             break;
         }else {
             printf("Please input a valid value.\n");
         }
-        printf("Please input a value: ");
+        printf("Enter a command: ");
         scanf("%s",input);
     }
 
 	close(s);
-
-
-
-
-
     return 0;
 }
 
@@ -249,38 +295,3 @@ int lookup_and_connect( const char *host, const char *service ) {
 	return s;
 }
 
-
-void convertToHex(char* input, char* output){
-    int loop;
-    int i; 
-    
-    i=0;
-    loop=0;
-    
-    while(input[loop] != '\0')
-    {
-        sprintf((char*)(output+i),"%02X:", input[loop]);
-        loop+=1;
-        i+=2;
-    }
-    //insert NULL at the end of the output string
-    output[i++] = '\0';
-}
-
-
-// int convertToHex(char* input, char* output){
-//     int loop;
-//     int i; 
-    
-//     i=0;
-//     loop=0;
-    
-//     while(input[loop] != '\0')
-//     {
-//         sprintf((char*)(output+i),"%02X:", input[loop]);
-//         loop+=1;
-//         i+=2;
-//     }
-//     //insert NULL at the end of the output string
-//     output[i++] = '\0';
-// }
